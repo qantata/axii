@@ -7,23 +7,27 @@ import (
 )
 
 type Position struct {
-	board           []uint64
+	board           []int
 	pieces          []uint64
-	turn            uint8
-	castlingRights  uint8
-	epSquare        uint8
+	turn            int
+	castlingRights  int
+	epSquare        int
 	halfMoveClock   int
 	fullMoveCounter int
+	pieceCount      []int
+	pieceList       [][10]int
 }
 
 func (p *Position) reset() {
-	p.board = make([]uint64, NR_SQUARES)
-	p.pieces = make([]uint64, 12)
+	p.board = make([]int, NR_SQUARES)
+	p.pieces = make([]uint64, MAX_PIECE_NR)
 	p.turn = SIDE_WHITE
 	p.castlingRights = NO_CASTLING_RIGHTS
 	p.epSquare = NO_SQUARE
 	p.halfMoveClock = 0
 	p.fullMoveCounter = 0
+	p.pieceCount = make([]int, MAX_PIECE_NR)
+	p.pieceList = make([][10]int, MAX_PIECE_NR)
 }
 
 func (p *Position) load(fen string) {
@@ -39,8 +43,8 @@ func (p *Position) load(fen string) {
 		if num, err := strconv.Atoi(letter); err == nil {
 			square += num
 		} else {
-			var piece uint64 = 0
-			var side uint64 = PIECE_BLACK
+			var piece int = 0
+			var side int = PIECE_BLACK
 
 			if letter == strings.ToUpper(letter) {
 				side = PIECE_WHITE
@@ -67,7 +71,7 @@ func (p *Position) load(fen string) {
 				fmt.Printf("Error: %s is not recognized as any piece", letter)
 			}
 
-			p.board[square] = piece | side
+			p.putPiece(piece|side, square)
 			square += 1
 		}
 	}
@@ -118,8 +122,22 @@ func (p *Position) load(fen string) {
 	fmt.Printf("Loaded position %s\n", fen)
 }
 
+func (p Position) getPieceCount(piece int) int {
+	return p.pieceCount[piece]
+}
+
+func (p Position) getPieceOn(square int) int {
+	return p.board[square]
+}
+
+func (p *Position) putPiece(piece int, square int) {
+	p.board[square] = piece                          // Put the piece on the square
+	p.pieceList[piece][p.pieceCount[piece]] = square // Update piece list
+	p.pieceCount[piece]++                            // Update piece count
+}
+
 func (p *Position) pretty() {
-	piecesToChars := "         PRNBQK  prnbqk"
+	piecesToChars := " PRNBQK  prnbqk"
 	result := ""
 	separator := "+---+---+---+---+---+---+---+---+"
 
@@ -146,6 +164,16 @@ func (p *Position) pretty() {
 			}
 		}
 	}
+
+	result += "\nSide to move: "
+
+	if p.turn == SIDE_WHITE {
+		result += "white"
+	} else {
+		result += "black"
+	}
+
+	result += "\n"
 
 	fmt.Println(result)
 }

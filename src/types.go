@@ -1,5 +1,13 @@
 package main
 
+/*
+	256 here is used as a safe number for the maximum
+	possible number of legal moves in any given position.
+*/
+const MAX_MOVES_IN_POS = 256
+
+const NO_MOVE = 0
+
 // Sides
 const (
 	SIDE_WHITE = 0
@@ -15,8 +23,37 @@ const (
 	PIECE_BISHOP = 4
 	PIECE_QUEEN  = 5
 	PIECE_KING   = 6
-	PIECE_WHITE  = 8
-	PIECE_BLACK  = 16
+	PIECE_WHITE  = 0
+	PIECE_BLACK  = 8
+	MAX_PIECE_NR = 15
+)
+
+// Promotion pieces
+const (
+	PROMOTION_PIECE_ROOK   = 0
+	PROMOTION_PIECE_KNIGHT = 1
+	PROMOTION_PIECE_BISHOP = 2
+	PROMOTION_PIECE_QUEEN  = 3
+)
+
+// Move types
+const (
+	MOVE_TYPE_NORMAL    = 0
+	MOVE_TYPE_PROMOTION = 1
+	MOVE_TYPE_ENPASSANT = 2
+	MOVE_TYPE_CASTLING  = 3
+)
+
+// Directions
+const (
+	DIR_N  = 8
+	DIR_S  = -8
+	DIR_E  = 1
+	DIR_W  = -1
+	DIR_NE = 9
+	DIR_NW = 7
+	DIR_SE = -7
+	DIR_SW = -9
 )
 
 // Castling rights
@@ -26,6 +63,30 @@ const (
 	CASTLING_WHITE_OOO = 2
 	CASTLING_BLACK_OO  = 4
 	CASTLING_BLACK_OOO = 8
+)
+
+// Ranks
+const (
+	RANK_1 = 0
+	RANK_2 = 1
+	RANK_3 = 2
+	RANK_4 = 3
+	RANK_5 = 4
+	RANK_6 = 5
+	RANK_7 = 6
+	RANK_8 = 7
+)
+
+// Files
+const (
+	FILE_A = 0
+	FILE_B = 1
+	FILE_C = 2
+	FILE_D = 3
+	FILE_E = 4
+	FILE_F = 5
+	FILE_G = 6
+	FILE_H = 7
 )
 
 // Squares
@@ -99,7 +160,7 @@ const (
 )
 
 // Squares with string names
-var SSM = map[string]uint8{
+var SSM = map[string]int{
 	"a1": 0,
 	"b1": 1,
 	"c1": 2,
