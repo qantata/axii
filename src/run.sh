@@ -1,0 +1,1 @@
+go run axii.go position.go types.go utils.go
