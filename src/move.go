@@ -21,6 +21,14 @@ func (move Move) dest() int {
 	return (move.move >> 6) & 63
 }
 
+func (move Move) typeOf() int {
+	return move.move & (3 << 14)
+}
+
+func (move Move) promotionPieceType() int {
+	return ((move.move >> 12) & 3) + PIECE_TYPE_ROOK
+}
+
 func (move *Move) create(orig int, dest int) {
 	move.move = (dest << 6) + orig
 }
@@ -28,6 +36,11 @@ func (move *Move) create(orig int, dest int) {
 func (move *Move) createWithPromotion(orig int, dest int, promotionPiece int) {
 	// 1 = promotion
 	move.move = (1 << 14) + (promotionPiece << 12) + (dest << 6) + orig
+}
+
+func (move *Move) createWithEnPassant(orig int, dest int) {
+	// 2 = en passant
+	move.move = (2 << 14) + (dest << 6) + orig
 }
 
 func (move *Move) createWithCastling(orig int, dest int) {

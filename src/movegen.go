@@ -46,8 +46,7 @@ func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) 
 
 		pawnCapture1Square := origSquare + pawnCaptureDir1
 		pawnCapture1Piece := pos.getPieceOn(pawnCapture1Square)
-		if (pawnCapture1Square == pos.epSquare) || (file < FILE_H && pawnCapture1Piece != NO_PIECE && getColorOf(pawnCapture1Piece) == opponentSide) {
-
+		if (pawnCapture1Square == pos.state.epSquare) || (file < FILE_H && pawnCapture1Piece != NO_PIECE && getColorOf(pawnCapture1Piece) == opponentSide) {
 			if isPromotion {
 				for promotePiece := PROMOTION_PIECE_ROOK; promotePiece <= PROMOTION_PIECE_QUEEN; promotePiece++ {
 					move := Move{}
@@ -57,7 +56,13 @@ func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) 
 				}
 			} else {
 				pawnCapture1Move := Move{}
-				pawnCapture1Move.create(origSquare, pawnCapture1Square)
+
+				if pawnCapture1Square == pos.state.epSquare {
+					pawnCapture1Move.createWithEnPassant(origSquare, pawnCapture1Square)
+				} else {
+					pawnCapture1Move.create(origSquare, pawnCapture1Square)
+				}
+
 				moves[*index] = pawnCapture1Move
 				*index++
 			}
@@ -65,7 +70,7 @@ func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) 
 
 		pawnCapture2Square := origSquare + pawnCaptureDir2
 		pawnCapture2Piece := pos.getPieceOn(pawnCapture2Square)
-		if (pawnCapture2Square == pos.epSquare) || (file > FILE_A && pawnCapture2Piece != NO_PIECE && getColorOf(pawnCapture2Piece) == opponentSide) {
+		if (pawnCapture2Square == pos.state.epSquare) || (file > FILE_A && pawnCapture2Piece != NO_PIECE && getColorOf(pawnCapture2Piece) == opponentSide) {
 			if isPromotion {
 				for promotePiece := PROMOTION_PIECE_ROOK; promotePiece <= PROMOTION_PIECE_QUEEN; promotePiece++ {
 					move := Move{}
@@ -75,7 +80,12 @@ func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) 
 				}
 			} else {
 				pawnCapture2Move := Move{}
-				pawnCapture2Move.create(origSquare, pawnCapture2Square)
+
+				if pawnCapture2Square == pos.state.epSquare {
+					pawnCapture2Move.createWithEnPassant(origSquare, pawnCapture2Square)
+				} else {
+					pawnCapture2Move.create(origSquare, pawnCapture2Square)
+				}
 
 				moves[*index] = pawnCapture2Move
 				*index++

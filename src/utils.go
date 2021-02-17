@@ -22,6 +22,11 @@ func getTypeOf(piece int) int {
 	return piece & 7
 }
 
+func createPiece(side int, pieceType int) int {
+	// Black starts at 8 (4th bit)
+	return (side << 3) + pieceType
+}
+
 func getBBOfSquare(square int) uint64 {
 	return squareBB[square]
 }
