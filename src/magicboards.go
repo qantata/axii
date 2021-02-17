@@ -51,19 +51,19 @@ func maskBishopAttacks(square int) uint64 {
 
 	// Generate attacks
 	for rank, file = tr+1, tf+1; rank <= 6 && file <= 6; rank, file = rank+1, file+1 {
-		attacks |= (uint64(1) << (rank*8 + file))
+		attacks |= (1 << (rank*8 + file))
 	}
 
 	for rank, file = tr+1, tf-1; rank <= 6 && file >= 1; rank, file = rank+1, file-1 {
-		attacks |= (uint64(1) << (rank*8 + file))
+		attacks |= (1 << (rank*8 + file))
 	}
 
 	for rank, file = tr-1, tf+1; rank >= 1 && file <= 6; rank, file = rank-1, file+1 {
-		attacks |= (uint64(1) << (rank*8 + file))
+		attacks |= (1 << (rank*8 + file))
 	}
 
 	for rank, file = tr-1, tf-1; rank >= 1 && file >= 1; rank, file = rank-1, file-1 {
-		attacks |= (uint64(1) << (rank*8 + file))
+		attacks |= (1 << (rank*8 + file))
 	}
 
 	return attacks
@@ -104,7 +104,7 @@ func setOccupancy(index int, nrBitsInMask int, attackMask uint64) uint64 {
 	var occupancy uint64 = 0
 
 	for count := 0; count < nrBitsInMask; count++ {
-		square := bbGetLS1BIndex(attackMask)
+		square := bbGetLSBIndex(attackMask)
 
 		bbPopSquareBit(&attackMask, square)
 
@@ -209,12 +209,10 @@ func initSliderAttacks(isBishop bool) {
 		rookMasks[square] = maskRookAttacks(square)
 
 		// Current mask
-		var mask uint64
+		mask := rookMasks[square]
 
 		if isBishop {
-			mask = maskBishopAttacks(square)
-		} else {
-			mask = maskRookAttacks(square)
+			mask = bishopMasks[square]
 		}
 
 		// Count attack mask bits
@@ -252,6 +250,10 @@ func getRookAttacks(square int, occupancy uint64) uint64 {
 	occupancy >>= 64 - rookRelevantBits[square]
 
 	return rookAttacks[square][occupancy]
+}
+
+func getQueenAttacks(square int, occupancy uint64) uint64 {
+	return getBishopAttacks(square, occupancy) | getRookAttacks(square, occupancy)
 }
 
 func initMagics() {
