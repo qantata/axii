@@ -236,26 +236,6 @@ func initSliderAttacks(isBishop bool) {
 	}
 }
 
-func getBishopAttacks(square int, occupancy uint64) uint64 {
-	occupancy &= bishopMasks[square]
-	occupancy *= bishopMagics[square]
-	occupancy >>= 64 - bishopRelevantBits[square]
-
-	return bishopAttacks[square][occupancy]
-}
-
-func getRookAttacks(square int, occupancy uint64) uint64 {
-	occupancy &= rookMasks[square]
-	occupancy *= rookMagics[square]
-	occupancy >>= 64 - rookRelevantBits[square]
-
-	return rookAttacks[square][occupancy]
-}
-
-func getQueenAttacks(square int, occupancy uint64) uint64 {
-	return getBishopAttacks(square, occupancy) | getRookAttacks(square, occupancy)
-}
-
 func initMagics() {
 	for square := SQ_A1; square <= SQ_H8; square++ {
 		bishopAttacks[square] = make(map[uint64]uint64)

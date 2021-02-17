@@ -1,1 +1,1 @@
-go run axii.go position.go types.go utils.go movegen.go move.go
+go run axii.go position.go types.go utils.go movegen.go move.go magicboards.go magictables.go bitboards.go attackboards.go

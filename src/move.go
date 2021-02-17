@@ -29,3 +29,8 @@ func (move *Move) createWithPromotion(orig int, dest int, promotionPiece int) {
 	// 1 = promotion
 	move.move = (1 << 14) + (promotionPiece << 12) + (dest << 6) + orig
 }
+
+func (move *Move) createWithCastling(orig int, dest int) {
+	// 3 = castling
+	move.move = (3 << 14) + (dest << 6) + orig
+}

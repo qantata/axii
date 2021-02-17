@@ -16,6 +16,8 @@ type Position struct {
 	fullMoveCounter int
 	pieceCount      []int
 	pieceList       [][10]int
+	piecesByType    []uint64
+	piecesByColor   []uint64
 }
 
 func (p *Position) reset() {
@@ -28,6 +30,8 @@ func (p *Position) reset() {
 	p.fullMoveCounter = 0
 	p.pieceCount = make([]int, MAX_PIECE_NR)
 	p.pieceList = make([][10]int, MAX_PIECE_NR)
+	p.piecesByType = make([]uint64, NR_PIECE_TYPES)
+	p.piecesByColor = make([]uint64, 2)
 }
 
 func (p *Position) load(fen string) {
@@ -130,10 +134,46 @@ func (p Position) getPieceOn(square int) int {
 	return p.board[square]
 }
 
+func (p Position) getOpponentSide() int {
+	return p.turn ^ 1
+}
+
+func (p Position) getPiecesByType(pieceType int) uint64 {
+	return p.piecesByType[pieceType]
+}
+
+func (p Position) getAllPieces() uint64 {
+	return p.piecesByType[PIECE_TYPE_ALL]
+}
+
+func (p Position) getPiecesByColor(color int) uint64 {
+	return p.piecesByColor[color]
+}
+
+func (p Position) canCastleShort(color int) bool {
+	if color == SIDE_WHITE {
+		return (p.castlingRights & CASTLING_WHITE_OO) != 0
+	} else {
+		return (p.castlingRights & CASTLING_BLACK_OO) != 0
+	}
+}
+
+func (p Position) canCastleLong(color int) bool {
+	if color == SIDE_WHITE {
+		return (p.castlingRights & CASTLING_WHITE_OOO) != 0
+	} else {
+		return (p.castlingRights & CASTLING_BLACK_OOO) != 0
+	}
+}
+
 func (p *Position) putPiece(piece int, square int) {
+	bbOfSquare := getBBOfSquare(square)
 	p.board[square] = piece                          // Put the piece on the square
 	p.pieceList[piece][p.pieceCount[piece]] = square // Update piece list
 	p.pieceCount[piece]++                            // Update piece count
+	p.piecesByType[getTypeOf(piece)] |= bbOfSquare   // Update piece counts per type
+	p.piecesByType[PIECE_TYPE_ALL] |= bbOfSquare     // Also update all types so we can easily get all pieces on the board
+	p.piecesByColor[getColorOf(piece)] |= bbOfSquare // Update pieces by color
 }
 
 func (p *Position) pretty() {

@@ -28,6 +28,19 @@ const (
 	MAX_PIECE_NR = 15
 )
 
+// Piece types
+const (
+	NO_PIECE_TYPE     = 0
+	PIECE_TYPE_PAWN   = 1
+	PIECE_TYPE_ROOK   = 2
+	PIECE_TYPE_KNIGHT = 3
+	PIECE_TYPE_BISHOP = 4
+	PIECE_TYPE_QUEEN  = 5
+	PIECE_TYPE_KING   = 6
+	PIECE_TYPE_ALL    = 7
+	NR_PIECE_TYPES    = 8
+)
+
 // Promotion pieces
 const (
 	PROMOTION_PIECE_ROOK   = 0
