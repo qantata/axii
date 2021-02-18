@@ -1,8 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var divideDepth int = 0
+var pv = []Move{}
 
 func perft(pos Position, depth int, divide bool) uint64 {
 	if depth == 0 {
@@ -35,4 +38,53 @@ func perft(pos Position, depth int, divide bool) uint64 {
 func divide(pos Position, depth int) uint64 {
 	divideDepth = depth
 	return perft(pos, depth, true)
+}
+
+func searchGo(pos Position) {
+	depth := 5
+	pv = make([]Move, depth)
+
+	search(&pos, depth, -32000, 32000)
+
+	/*
+		fmt.Printf("info depth %d pv ", depth)
+		for i := depth - 1; i >= 0; i-- {
+			fmt.Printf("%s ", pv[i].toStr())
+		}*/
+
+	fmt.Printf("bestmove %s\n", pv[depth-1].toStr())
+}
+
+func search(pos *Position, depth int, alpha int, beta int) int {
+	if depth == 0 {
+		return pos.evaluate()
+	}
+
+	bestScore := -32000
+	moves, nrMoves := generateMoves(*pos)
+
+	for i := 0; i < nrMoves; i++ {
+		move := moves[i]
+		if !pos.isMoveLegal(move, true) {
+			continue
+		}
+
+		score := -search(pos, depth-1, -beta, -alpha)
+		pos.unmakeMove(move)
+
+		if score >= beta {
+			return score
+		}
+
+		if score > bestScore {
+			bestScore = score
+
+			if score > alpha {
+				alpha = score
+				pv[depth-1] = move
+			}
+		}
+	}
+
+	return bestScore
 }

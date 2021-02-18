@@ -5,6 +5,7 @@ package main
 	possible number of legal moves in any given position.
 */
 const MAX_MOVES_IN_POS = 256
+const STARTING_POS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 const NO_MOVE = 0
 
@@ -26,6 +27,22 @@ const (
 	PIECE_WHITE  = 0
 	PIECE_BLACK  = 8
 	MAX_PIECE_NR = 15
+)
+
+// Pieces with colors
+const (
+	WHITE_PAWN   = 1
+	WHITE_ROOK   = 2
+	WHITE_KNIGHT = 3
+	WHITE_BISHOP = 4
+	WHITE_QUEEN  = 5
+	WHITE_KING   = 6
+	BLACK_PAWN   = 9
+	BLACK_ROOK   = 10
+	BLACK_KNIGHT = 11
+	BLACK_BISHOP = 12
+	BLACK_QUEEN  = 13
+	BLACK_KING   = 14
 )
 
 // Piece types

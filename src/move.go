@@ -19,7 +19,26 @@ func (move Move) print() {
 }
 
 func (move Move) toStr() string {
-	return STS[move.orig()] + STS[move.dest()]
+	str := STS[move.orig()] + STS[move.dest()]
+
+	if move.typeOf() == MOVE_TYPE_PROMOTION {
+		piece := move.promotionPieceType()
+
+		switch piece {
+		case PIECE_ROOK:
+			str += "r"
+		case PIECE_KNIGHT:
+			str += "n"
+		case PIECE_BISHOP:
+			str += "b"
+		case PIECE_QUEEN:
+			str += "q"
+		default:
+			fmt.Println("Promotion piece type is invalid")
+		}
+	}
+
+	return str
 }
 
 // Get origin square of the move

@@ -135,6 +135,10 @@ func (p *Position) load(fen string) {
 	fmt.Printf("Loaded position %s\n", fen)
 }
 
+func (p Position) evaluate() int {
+	return evaluatePosition(p)
+}
+
 func (p Position) getPieceCount(piece int) int {
 	return p.pieceCount[piece]
 }
