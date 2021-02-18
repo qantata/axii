@@ -8,6 +8,7 @@ import (
 var divideDepth int = 0
 var pv = []Move{}
 var pvScore = []int{}
+var pvMove Move = Move{}
 
 func perft(pos Position, depth int, divide bool) uint64 {
 	if depth == 0 {
@@ -46,6 +47,7 @@ func searchGo(pos Position) {
 	depth := 6
 	pv = make([]Move, depth)
 	pvScore = make([]int, depth)
+	pvMove = Move{}
 
 	for i := 0; i < depth; i++ {
 		pvScore[i] = -32000
@@ -59,7 +61,12 @@ func searchGo(pos Position) {
 			fmt.Printf("%s ", pv[i].toStr())
 		}*/
 
-	fmt.Printf("bestmove %s\n", pv[depth-1].toStr())
+	pvMove = pv[depth-1]
+
+	if !TESTING {
+		fmt.Printf("bestmove %s\n", pvMove.toStr())
+	}
+
 }
 
 func search(pos *Position, depth int, alpha int, beta int) int {

@@ -132,7 +132,9 @@ func (p *Position) load(fen string) {
 		}
 	}
 
-	fmt.Printf("Loaded position %s\n", fen)
+	if !TESTING {
+		fmt.Printf("Loaded position %s\n", fen)
+	}
 }
 
 func (p Position) isInCheck() bool {
