@@ -57,10 +57,10 @@ func (p *Position) load(fen string) {
 			square += num
 		} else {
 			var piece int = 0
-			var side int = PIECE_BLACK
+			var side int = SIDE_BLACK
 
 			if letter == strings.ToUpper(letter) {
-				side = PIECE_WHITE
+				side = SIDE_WHITE
 			}
 
 			switch strings.ToLower(letter) {
@@ -84,7 +84,7 @@ func (p *Position) load(fen string) {
 				fmt.Printf("Error: %s is not recognized as any piece", letter)
 			}
 
-			p.putPiece(piece|side, square)
+			p.putPiece(createPiece(side, piece), square)
 			square += 1
 		}
 	}
@@ -119,17 +119,17 @@ func (p *Position) load(fen string) {
 	}
 
 	// Halfmove clock
-	if num, err := strconv.Atoi(string(s[4])); err == nil {
-		p.halfMoveClock = num
-	} else {
-		fmt.Printf("Error: %s is not a valid halfmove clock value!", s[4])
+	if len(s) > 4 {
+		if num, err := strconv.Atoi(string(s[4])); err == nil {
+			p.halfMoveClock = num
+		}
 	}
 
 	// Full move counter
-	if num, err := strconv.Atoi(string(s[5])); err == nil {
-		p.fullMoveCounter = num
-	} else {
-		fmt.Printf("Error: %s is not a valid full move counter value!", s[5])
+	if len(s) > 5 {
+		if num, err := strconv.Atoi(string(s[5])); err == nil {
+			p.fullMoveCounter = num
+		}
 	}
 
 	fmt.Printf("Loaded position %s\n", fen)
@@ -149,6 +149,10 @@ func (p Position) getOpponentSide() int {
 
 func (p Position) getPiecesByType(pieceType int) uint64 {
 	return p.piecesByType[pieceType]
+}
+
+func (p Position) getPiecesByTypeAndColor(pieceType int, color int) uint64 {
+	return p.getPiecesByType(pieceType) & p.getPiecesByColor(color)
 }
 
 func (p Position) getAllPieces() uint64 {
@@ -188,7 +192,7 @@ func (p *Position) makeMove(move Move) {
 
 	newState := new(BoardState)
 	newState.capturedPiece = p.state.capturedPiece
-	newState.castlingRights = p.state.capturedPiece
+	newState.castlingRights = p.state.castlingRights
 	newState.epSquare = p.state.epSquare
 	newState.rule50 = p.state.epSquare
 	newState.prevState = p.state
@@ -218,13 +222,13 @@ func (p *Position) makeMove(move Move) {
 		canOpponentCastleShort := p.canCastleShort(opponentSide)
 		canOpponentCastleLong := p.canCastleLong(opponentSide)
 
-		if to == SQ_H8 && canOpponentCastleShort {
+		if to == SQ_H8 && p.turn == SIDE_WHITE && canOpponentCastleShort {
 			p.state.castlingRights ^= CASTLING_BLACK_OO
-		} else if to == SQ_H1 && canOpponentCastleShort {
+		} else if to == SQ_H1 && p.turn == SIDE_BLACK && canOpponentCastleShort {
 			p.state.castlingRights ^= CASTLING_WHITE_OO
-		} else if to == SQ_A8 && canOpponentCastleLong {
+		} else if to == SQ_A8 && p.turn == SIDE_WHITE && canOpponentCastleLong {
 			p.state.castlingRights ^= CASTLING_BLACK_OOO
-		} else if to == SQ_A1 && canOpponentCastleLong {
+		} else if to == SQ_A1 && p.turn == SIDE_BLACK && canOpponentCastleLong {
 			p.state.castlingRights ^= CASTLING_WHITE_OOO
 		}
 	}
@@ -240,8 +244,8 @@ func (p *Position) makeMove(move Move) {
 		}
 
 		if p.turn == SIDE_BLACK {
-			rookFrom = ^rookFrom
-			rookTo = ^rookTo
+			rookFrom = flipSquare(rookFrom)
+			rookTo = flipSquare(rookTo)
 		}
 
 		p.movePiece(rookFrom, rookTo)
@@ -330,8 +334,8 @@ func (p *Position) unmakeMove(move Move) {
 		}
 
 		if p.turn == SIDE_BLACK {
-			rookFrom = ^rookFrom
-			rookTo = ^rookTo
+			rookFrom = flipSquare(rookFrom)
+			rookTo = flipSquare(rookTo)
 		}
 
 		p.movePiece(rookFrom, rookTo)
@@ -367,7 +371,123 @@ func (p *Position) unmakeMove(move Move) {
 	p.state = oldState
 }
 
+func (p Position) getSquareWithPieceType(side int, pieceType int) int {
+	piece := createPiece(side, pieceType)
+
+	return p.pieceList[piece][0]
+}
+
+func (p *Position) isMoveLegal(move Move, makeMoveIfLegal bool) bool {
+	from := move.orig()
+	to := move.dest()
+	moveType := move.typeOf()
+	kingSquare := p.getSquareWithPieceType(p.turn, PIECE_TYPE_KING)
+	opponentSide := p.getOpponentSide()
+	pieceType := getTypeOf(p.getPieceOn(from))
+
+	if (getColorOf(p.getPieceOn(from)) != p.turn) || (p.getPieceOn(from) == NO_PIECE) {
+		return false
+	}
+
+	// We separately check en passant since only rooks, bishops and queens can
+	// have a discovered check after an en passant move, so it's more efficient
+	if moveType == MOVE_TYPE_ENPASSANT {
+		captureSquare := to
+
+		if p.turn == SIDE_WHITE {
+			captureSquare += DIR_S
+		} else {
+			captureSquare += DIR_N
+		}
+
+		// Get new occupancy bitboard after en passant
+		occupied := (p.getAllPieces() ^ getBBOfSquare(from) ^ getBBOfSquare(captureSquare)) | getBBOfSquare(to)
+
+		queens := p.getPiecesByTypeAndColor(PIECE_QUEEN, opponentSide)
+		rooks := p.getPiecesByTypeAndColor(PIECE_ROOK, opponentSide)
+		bishops := p.getPiecesByTypeAndColor(PIECE_BISHOP, opponentSide)
+
+		// Check the attack boards from the king's point of view and if they hit any
+		// of the bishops, queens or rooks, then the king is in check
+		if (getBishopAttacks(kingSquare, occupied) & (queens | bishops)) != 0 {
+			return false
+		}
+
+		if (getRookAttacks(kingSquare, occupied) & (queens | rooks)) != 0 {
+			return false
+		}
+
+		if makeMoveIfLegal {
+			p.makeMove(move)
+		}
+
+		return true
+	}
+
+	opponentPieces := p.getPiecesByColor(opponentSide)
+
+	// Check castling
+	if moveType == MOVE_TYPE_CASTLING {
+		steps := 0
+		nrSteps := 3
+		dir := DIR_W
+
+		if to > from {
+			dir = DIR_E
+		}
+
+		allPieces := p.getAllPieces()
+		for square := kingSquare; steps < nrSteps; square, steps = square+dir, steps+1 {
+			if (getAttackersBBToSquare(square, allPieces, *p) & opponentPieces) != 0 {
+				return false
+			}
+		}
+
+		if makeMoveIfLegal {
+			p.makeMove(move)
+		}
+
+		return true
+	}
+
+	// Check that the king isn't walking into a check
+	if pieceType == PIECE_KING {
+		pieces := p.getAllPieces()
+		pieces ^= (getBBOfSquare(from) ^ getBBOfSquare(to))
+
+		if (getAttackersBBToSquare(to, pieces, *p) & opponentPieces) != 0 {
+			return false
+		}
+
+		if makeMoveIfLegal {
+			p.makeMove(move)
+		}
+
+		return true
+	}
+
+	// Otherwise, make the move and check if the king ended up in a check
+	p.makeMove(move)
+
+	// Use opponent king since we made a move
+	// TODO: CHECK king square
+	ownPieces := p.getPiecesByColor(p.turn)
+	kingSquareNew := p.getSquareWithPieceType(p.getOpponentSide(), PIECE_KING)
+
+	isLegal := true
+	if (getAttackersBBToSquare(kingSquareNew, p.getAllPieces(), *p) & ownPieces) != 0 {
+		isLegal = false
+	}
+
+	if !isLegal || !makeMoveIfLegal {
+		p.unmakeMove(move)
+	}
+
+	return isLegal
+}
+
 func (p *Position) putPiece(piece int, square int) {
+	x := getColorOf(piece)
 	bbOfSquare := getBBOfSquare(square)
 	p.board[square] = piece                          // Put the piece on the square
 	p.pieceList[piece][p.pieceCount[piece]] = square // Update piece list
@@ -375,7 +495,7 @@ func (p *Position) putPiece(piece int, square int) {
 	p.pieceCount[piece]++                            // Update piece count
 	p.piecesByType[getTypeOf(piece)] |= bbOfSquare   // Update piece counts per type
 	p.piecesByType[PIECE_TYPE_ALL] |= bbOfSquare     // Also update all types so we can easily get all pieces on the board
-	p.piecesByColor[getColorOf(piece)] |= bbOfSquare // Update pieces by color
+	p.piecesByColor[x] |= bbOfSquare                 // Update pieces by color
 }
 
 func (p *Position) removePiece(piece int, square int) {

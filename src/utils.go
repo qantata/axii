@@ -10,7 +10,12 @@ func getFileOf(square int) int {
 
 func getColorOf(piece int) int {
 	// White is 0, black is 8
-	return piece >> 4
+	return piece >> 3
+}
+
+// A1->A8
+func flipSquare(square int) int {
+	return square ^ SQ_A8
 }
 
 func getTypeOf(piece int) int {

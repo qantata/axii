@@ -10,7 +10,7 @@ const (
 	MOVEGEN_DIR_W = 3
 )
 
-func generateMoves(pos Position) [MAX_MOVES_IN_POS]Move {
+func generateMoves(pos Position) ([MAX_MOVES_IN_POS]Move, int) {
 	var moves [MAX_MOVES_IN_POS]Move
 	var index int = 0
 
@@ -21,11 +21,11 @@ func generateMoves(pos Position) [MAX_MOVES_IN_POS]Move {
 	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_QUEEN)
 	generateKingMoves(pos, &moves, &index)
 
-	return moves
+	return moves, index
 }
 
 func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) {
-	piece := pos.turn | PIECE_PAWN
+	piece := createPiece(pos.turn, PIECE_PAWN)
 	pieceCount := pos.getPieceCount(piece)
 	opponentSide := pos.getOpponentSide()
 
@@ -44,51 +44,55 @@ func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) 
 			pawnCaptureDir2 = DIR_SW
 		}
 
-		pawnCapture1Square := origSquare + pawnCaptureDir1
-		pawnCapture1Piece := pos.getPieceOn(pawnCapture1Square)
-		if (pawnCapture1Square == pos.state.epSquare) || (file < FILE_H && pawnCapture1Piece != NO_PIECE && getColorOf(pawnCapture1Piece) == opponentSide) {
-			if isPromotion {
-				for promotePiece := PROMOTION_PIECE_ROOK; promotePiece <= PROMOTION_PIECE_QUEEN; promotePiece++ {
-					move := Move{}
-					move.createWithPromotion(origSquare, pawnCapture1Square, promotePiece)
-					moves[*index] = move
+		if file < FILE_H {
+			pawnCapture1Square := origSquare + pawnCaptureDir1
+			pawnCapture1Piece := pos.getPieceOn(pawnCapture1Square)
+			if (pawnCapture1Square == pos.state.epSquare) || (pawnCapture1Piece != NO_PIECE && getColorOf(pawnCapture1Piece) == opponentSide) {
+				if isPromotion {
+					for promotePiece := PROMOTION_PIECE_ROOK; promotePiece <= PROMOTION_PIECE_QUEEN; promotePiece++ {
+						move := Move{}
+						move.createWithPromotion(origSquare, pawnCapture1Square, promotePiece)
+						moves[*index] = move
+						*index++
+					}
+				} else {
+					pawnCapture1Move := Move{}
+
+					if pawnCapture1Square == pos.state.epSquare {
+						pawnCapture1Move.createWithEnPassant(origSquare, pawnCapture1Square)
+					} else {
+						pawnCapture1Move.create(origSquare, pawnCapture1Square)
+					}
+
+					moves[*index] = pawnCapture1Move
 					*index++
 				}
-			} else {
-				pawnCapture1Move := Move{}
-
-				if pawnCapture1Square == pos.state.epSquare {
-					pawnCapture1Move.createWithEnPassant(origSquare, pawnCapture1Square)
-				} else {
-					pawnCapture1Move.create(origSquare, pawnCapture1Square)
-				}
-
-				moves[*index] = pawnCapture1Move
-				*index++
 			}
 		}
 
-		pawnCapture2Square := origSquare + pawnCaptureDir2
-		pawnCapture2Piece := pos.getPieceOn(pawnCapture2Square)
-		if (pawnCapture2Square == pos.state.epSquare) || (file > FILE_A && pawnCapture2Piece != NO_PIECE && getColorOf(pawnCapture2Piece) == opponentSide) {
-			if isPromotion {
-				for promotePiece := PROMOTION_PIECE_ROOK; promotePiece <= PROMOTION_PIECE_QUEEN; promotePiece++ {
-					move := Move{}
-					move.createWithPromotion(origSquare, pawnCapture2Square, promotePiece)
-					moves[*index] = move
+		if file > FILE_A {
+			pawnCapture2Square := origSquare + pawnCaptureDir2
+			pawnCapture2Piece := pos.getPieceOn(pawnCapture2Square)
+			if (pawnCapture2Square == pos.state.epSquare) || (pawnCapture2Piece != NO_PIECE && getColorOf(pawnCapture2Piece) == opponentSide) {
+				if isPromotion {
+					for promotePiece := PROMOTION_PIECE_ROOK; promotePiece <= PROMOTION_PIECE_QUEEN; promotePiece++ {
+						move := Move{}
+						move.createWithPromotion(origSquare, pawnCapture2Square, promotePiece)
+						moves[*index] = move
+						*index++
+					}
+				} else {
+					pawnCapture2Move := Move{}
+
+					if pawnCapture2Square == pos.state.epSquare {
+						pawnCapture2Move.createWithEnPassant(origSquare, pawnCapture2Square)
+					} else {
+						pawnCapture2Move.create(origSquare, pawnCapture2Square)
+					}
+
+					moves[*index] = pawnCapture2Move
 					*index++
 				}
-			} else {
-				pawnCapture2Move := Move{}
-
-				if pawnCapture2Square == pos.state.epSquare {
-					pawnCapture2Move.createWithEnPassant(origSquare, pawnCapture2Square)
-				} else {
-					pawnCapture2Move.create(origSquare, pawnCapture2Square)
-				}
-
-				moves[*index] = pawnCapture2Move
-				*index++
 			}
 		}
 
@@ -147,7 +151,7 @@ func generateSlidingMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *in
 		piece = PIECE_QUEEN
 	}
 
-	piece |= pos.turn
+	piece = createPiece(pos.turn, piece)
 	pieceCount := pos.getPieceCount(piece)
 
 	for i := 0; i < pieceCount; i++ {
@@ -182,7 +186,7 @@ func generateSlidingMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *in
 }
 
 func generateKnightMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) {
-	piece := pos.turn | PIECE_KNIGHT
+	piece := createPiece(pos.turn, PIECE_KNIGHT)
 	pieceCount := pos.getPieceCount(piece)
 
 	for i := 0; i < pieceCount; i++ {
@@ -204,7 +208,7 @@ func generateKnightMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int
 }
 
 func generateKingMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) {
-	piece := pos.turn | PIECE_KING
+	piece := createPiece(pos.turn, PIECE_KING)
 	pieceCount := pos.getPieceCount(piece)
 
 	for i := 0; i < pieceCount; i++ {

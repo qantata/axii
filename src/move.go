@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type Move struct {
 	/*
 		The move is stored in the first 16 bits of the integer
@@ -9,6 +11,15 @@ type Move struct {
 		Bits 14-15 store move flag (normal, promotion, ep, castling)
 	*/
 	move int
+}
+
+// Print the move to the console
+func (move Move) print() {
+	fmt.Printf("Move: %s-%s\n", STS[move.orig()], STS[move.dest()])
+}
+
+func (move Move) toStr() string {
+	return STS[move.orig()] + STS[move.dest()]
 }
 
 // Get origin square of the move
@@ -22,7 +33,7 @@ func (move Move) dest() int {
 }
 
 func (move Move) typeOf() int {
-	return move.move & (3 << 14)
+	return (move.move >> 14) & 3
 }
 
 func (move Move) promotionPieceType() int {

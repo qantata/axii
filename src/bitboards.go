@@ -43,12 +43,17 @@ var DE_BRUJIN_TABLE_FORWARD = [64]int{
 var squareBB [64]uint64
 var kingAttacksBB [64]uint64
 var knightAttacksBB [64]uint64
+var pawnAttacksBB [64][2]uint64
 
 func initBitboards() {
 	for square := SQ_A1; square <= SQ_H8; square++ {
 		// Square to bitboard
 		sqbb := uint64(math.Pow(2, float64(square)))
 		squareBB[square] = sqbb
+
+		// Pawn attacks
+		pawnAttacksBB[square][SIDE_WHITE] = shiftBB(sqbb, DIR_NE) | shiftBB(sqbb, DIR_NW)
+		pawnAttacksBB[square][SIDE_BLACK] = shiftBB(sqbb, DIR_SE) | shiftBB(sqbb, DIR_SW)
 
 		// King attacks
 		kingAttacks := shiftBB(sqbb, DIR_N)
