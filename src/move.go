@@ -10,7 +10,8 @@ type Move struct {
 		Bits 12-13 store promotion piece type (rook, knight, bishop, queen)
 		Bits 14-15 store move flag (normal, promotion, ep, castling)
 	*/
-	move int
+	move  int
+	score int
 }
 
 // Print the move to the console

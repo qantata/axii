@@ -135,6 +135,47 @@ func (p *Position) load(fen string) {
 	fmt.Printf("Loaded position %s\n", fen)
 }
 
+func (p Position) isInCheck() bool {
+	kingSquare := p.getSquareWithPieceType(p.turn, PIECE_KING)
+	attackers := getAttackersBBToSquare(kingSquare, p.getAllPieces(), p)
+
+	opponentPieces := p.getPiecesByColor(p.getOpponentSide())
+
+	return (attackers & opponentPieces) != 0
+}
+
+func (p Position) isInsufficientMaterial() bool {
+	if p.getPiecesByType(PIECE_PAWN) != 0 || p.getPiecesByType(PIECE_ROOK) != 0 || p.getPiecesByType(PIECE_QUEEN) != 0 {
+		return false
+	}
+
+	myKnights := p.getPiecesByTypeAndColor(PIECE_KNIGHT, p.turn)
+	oppKnights := p.getPiecesByTypeAndColor(PIECE_KNIGHT, p.getOpponentSide())
+	myBishops := p.getPiecesByTypeAndColor(PIECE_BISHOP, p.turn)
+	oppBishops := p.getPiecesByTypeAndColor(PIECE_BISHOP, p.getOpponentSide())
+
+	// Knight + bishop is not a draw
+	if myKnights != 0 && myBishops != 0 {
+		return false
+	}
+
+	if oppKnights != 0 && oppBishops != 0 {
+		return false
+	}
+
+	// Bishop + bishop is not a draw
+	if p.pieceCount[WHITE_BISHOP] >= 2 || p.pieceCount[BLACK_BISHOP] >= 2 {
+		return false
+	}
+
+	// More than 2 knights is not a draw
+	if p.pieceCount[WHITE_KNIGHT] > 2 || p.pieceCount[BLACK_KNIGHT] > 2 {
+		return false
+	}
+
+	return true
+}
+
 func (p Position) evaluate() int {
 	return evaluatePosition(p)
 }

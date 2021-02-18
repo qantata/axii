@@ -3,6 +3,16 @@ package main
 var rookDistances [64][]int
 var bishopDistances [64][]int
 
+var mvvlvaTable [16][16]int
+var mvvlvaVictimScores = []int{0, 100, 400, 200, 300, 500, 600, 0, 0, 100, 400, 200, 300, 500, 600}
+
+// MVVLVA constants
+const (
+	MVVLVA_PADDING   = 1000000
+	KILLER_PRIMARY   = 900000
+	KILLER_SECONDARY = 800000
+)
+
 const (
 	MOVEGEN_DIR_N = 0
 	MOVEGEN_DIR_E = 1
@@ -10,21 +20,49 @@ const (
 	MOVEGEN_DIR_W = 3
 )
 
+const piecesToChars = " PRNBQK  prnbqk"
+
+func initMoveGen() {
+	var order = []int{WHITE_PAWN, WHITE_KNIGHT, WHITE_BISHOP, WHITE_ROOK, WHITE_QUEEN, WHITE_KING, BLACK_PAWN, BLACK_KNIGHT, BLACK_BISHOP, BLACK_ROOK, BLACK_QUEEN, BLACK_KING}
+
+	for i := 0; i < len(order); i++ {
+		for j := 0; j < len(order); j++ {
+			attacker := order[i]
+			victim := order[j]
+			mvvlvaTable[victim][attacker] = (mvvlvaVictimScores[victim] + 6 - (mvvlvaVictimScores[attacker] / 100))
+		}
+	}
+}
+
 func generateMoves(pos Position) ([MAX_MOVES_IN_POS]Move, int) {
 	var moves [MAX_MOVES_IN_POS]Move
 	var index int = 0
 
-	generatePawnMoves(pos, &moves, &index)
-	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_ROOK)
-	generateKnightMoves(pos, &moves, &index)
-	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_BISHOP)
-	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_QUEEN)
-	generateKingMoves(pos, &moves, &index)
+	generatePawnMoves(pos, &moves, &index, false)
+	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_ROOK, false)
+	generateKnightMoves(pos, &moves, &index, false)
+	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_BISHOP, false)
+	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_QUEEN, false)
+	generateKingMoves(pos, &moves, &index, false)
 
 	return moves, index
 }
 
-func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) {
+func generateCaptures(pos Position) ([MAX_MOVES_IN_POS]Move, int) {
+	var moves [MAX_MOVES_IN_POS]Move
+	var index int = 0
+
+	generatePawnMoves(pos, &moves, &index, true)
+	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_ROOK, true)
+	generateKnightMoves(pos, &moves, &index, true)
+	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_BISHOP, true)
+	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_QUEEN, true)
+	generateKingMoves(pos, &moves, &index, true)
+
+	return moves, index
+}
+
+func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int, onlyCaptures bool) {
 	piece := createPiece(pos.turn, PIECE_PAWN)
 	pieceCount := pos.getPieceCount(piece)
 	opponentSide := pos.getOpponentSide()
@@ -52,11 +90,14 @@ func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) 
 					for promotePiece := PROMOTION_PIECE_ROOK; promotePiece <= PROMOTION_PIECE_QUEEN; promotePiece++ {
 						move := Move{}
 						move.createWithPromotion(origSquare, pawnCapture1Square, promotePiece)
+						move.score = (mvvlvaVictimScores[promotePiece+2] - mvvlvaVictimScores[PIECE_PAWN]) + mvvlvaTable[pawnCapture1Piece][PIECE_PAWN]
+
 						moves[*index] = move
 						*index++
 					}
 				} else {
 					pawnCapture1Move := Move{}
+					pawnCapture1Move.score = mvvlvaTable[pawnCapture1Piece][PIECE_PAWN]
 
 					if pawnCapture1Square == pos.state.epSquare {
 						pawnCapture1Move.createWithEnPassant(origSquare, pawnCapture1Square)
@@ -78,11 +119,14 @@ func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) 
 					for promotePiece := PROMOTION_PIECE_ROOK; promotePiece <= PROMOTION_PIECE_QUEEN; promotePiece++ {
 						move := Move{}
 						move.createWithPromotion(origSquare, pawnCapture2Square, promotePiece)
+						move.score = (mvvlvaVictimScores[promotePiece+2] - mvvlvaVictimScores[PIECE_PAWN]) + mvvlvaTable[pawnCapture2Piece][PIECE_PAWN]
+
 						moves[*index] = move
 						*index++
 					}
 				} else {
 					pawnCapture2Move := Move{}
+					pawnCapture2Move.score = mvvlvaTable[pawnCapture2Piece][PIECE_PAWN]
 
 					if pawnCapture2Square == pos.state.epSquare {
 						pawnCapture2Move.createWithEnPassant(origSquare, pawnCapture2Square)
@@ -94,6 +138,10 @@ func generatePawnMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) 
 					*index++
 				}
 			}
+		}
+
+		if onlyCaptures {
+			continue
 		}
 
 		// Pawn pushes
@@ -142,7 +190,7 @@ const (
 	SLIDING_GEN_TYPE_QUEEN  = 2
 )
 
-func generateSlidingMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int, genType int) {
+func generateSlidingMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int, genType int, onlyCaptures bool) {
 	piece := PIECE_BISHOP
 
 	if genType == SLIDING_GEN_TYPE_ROOK {
@@ -169,14 +217,23 @@ func generateSlidingMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *in
 			attacks |= (getBishopAttacks(origSquare, occupancy) | getRookAttacks(origSquare, occupancy))
 		}
 
-		// Remove own pieces since we can't move onto them
-		attacks &= ^pos.getPiecesByColor(pos.turn)
+		// Only use relevant square & pieces
+		if onlyCaptures {
+			attacks &= pos.getPiecesByColor(pos.getOpponentSide())
+		} else {
+			attacks &= ^pos.getPiecesByColor(pos.turn)
+		}
 
 		// Go through the attack moves
 		for attacks != 0 {
 			square := bbPopLSB(&attacks)
-
 			move := Move{}
+
+			capPiece := pos.getPieceOn(square)
+			if capPiece != NO_PIECE {
+				move.score = mvvlvaTable[capPiece][piece]
+			}
+
 			move.create(origSquare, square)
 
 			moves[*index] = move
@@ -185,7 +242,7 @@ func generateSlidingMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *in
 	}
 }
 
-func generateKnightMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) {
+func generateKnightMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int, onlyCaptures bool) {
 	piece := createPiece(pos.turn, PIECE_KNIGHT)
 	pieceCount := pos.getPieceCount(piece)
 
@@ -193,12 +250,22 @@ func generateKnightMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int
 		origSquare := pos.pieceList[piece][i]
 
 		attacks := getKnightAttacks(origSquare)
-		attacks &= ^pos.getPiecesByColor(pos.turn)
+
+		if onlyCaptures {
+			attacks &= pos.getPiecesByColor(pos.getOpponentSide())
+		} else {
+			attacks &= ^pos.getPiecesByColor(pos.turn)
+		}
 
 		for attacks != 0 {
 			square := bbPopLSB(&attacks)
-
 			move := Move{}
+
+			capPiece := pos.getPieceOn(square)
+			if capPiece != NO_PIECE {
+				move.score = mvvlvaTable[capPiece][piece]
+			}
+
 			move.create(origSquare, square)
 
 			moves[*index] = move
@@ -207,7 +274,7 @@ func generateKnightMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int
 	}
 }
 
-func generateKingMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) {
+func generateKingMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int, onlyCaptures bool) {
 	piece := createPiece(pos.turn, PIECE_KING)
 	pieceCount := pos.getPieceCount(piece)
 
@@ -216,16 +283,30 @@ func generateKingMoves(pos Position, moves *[MAX_MOVES_IN_POS]Move, index *int) 
 
 		// Regular moves
 		attacks := getKingAttacks(origSquare)
-		attacks &= ^pos.getPiecesByColor(pos.turn)
+
+		if onlyCaptures {
+			attacks &= pos.getPiecesByColor(pos.getOpponentSide())
+		} else {
+			attacks &= ^pos.getPiecesByColor(pos.turn)
+		}
 
 		for attacks != 0 {
 			square := bbPopLSB(&attacks)
-
 			move := Move{}
+
+			capPiece := pos.getPieceOn(square)
+			if capPiece != NO_PIECE {
+				move.score = mvvlvaTable[capPiece][piece]
+			}
+
 			move.create(origSquare, square)
 
 			moves[*index] = move
 			*index++
+		}
+
+		if onlyCaptures {
+			continue
 		}
 
 		// Castling

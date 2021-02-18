@@ -16,27 +16,24 @@ func setPosition(pos *Position, tokens []string) {
 		}
 	}
 
-	if tokens[2] == "moves" {
-		for i := 3; i < len(tokens); i++ {
-			handleUciMove(pos, tokens[i])
-		}
-	} else {
-		if len(tokens) < 6 {
-			fmt.Println("Fen position string has to have at least 6 space separated parts")
-			return
-		}
-
-		if tokens[1] != "fen" {
-			fmt.Println("Position string is not fen!")
-			return
-		}
-
+	if tokens[1] == "fen" {
 		fen := ""
 		for i := 2; i < len(tokens); i++ {
 			fen += tokens[i] + " "
 		}
 
 		pos.load(fen)
+	}
+
+	for i := 0; i < len(tokens); i++ {
+		token := tokens[i]
+		if token == "moves" {
+			for j := i + 1; j < len(tokens); j++ {
+				handleUciMove(pos, tokens[j])
+			}
+
+			break
+		}
 	}
 }
 

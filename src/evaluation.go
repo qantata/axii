@@ -11,6 +11,10 @@ var pieceValues = []int{
 }
 
 func evaluatePosition(pos Position) int {
+	if pos.isInsufficientMaterial() {
+		return 0
+	}
+
 	result := 0
 
 	result += pos.getPieceCount(WHITE_PAWN) * pieceValues[PIECE_PAWN]
