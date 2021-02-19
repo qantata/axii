@@ -2,11 +2,18 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 )
 
+var zobristEpFile [8]uint64
+var zobristSideToMove uint64
+var zobristPieceMap [16][NR_SQUARES]uint64
+var zobristCastlingRights [NR_CASTLING]uint64
+
 type BoardState struct {
+	key            uint64
 	castlingRights int
 	epSquare       int
 	rule50         int
@@ -40,6 +47,26 @@ func (p *Position) reset() {
 	p.piecesByType = make([]uint64, NR_PIECE_TYPES)
 	p.piecesByColor = make([]uint64, 2)
 	p.state = nil
+}
+
+func initPosition() {
+	rand.Seed(133742069)
+
+	for piece := PIECE_PAWN; piece <= BLACK_KING; piece++ {
+		for square := SQ_A1; square <= SQ_H8; square++ {
+			zobristPieceMap[piece][square] = rand.Uint64()
+		}
+	}
+
+	for file := FILE_A; file <= FILE_H; file++ {
+		zobristEpFile[file] = rand.Uint64()
+	}
+
+	for cr := NO_CASTLING_RIGHTS; cr <= CASTLING_ALL; cr++ {
+		zobristCastlingRights[cr] = rand.Uint64()
+	}
+
+	zobristSideToMove = rand.Uint64()
 }
 
 func (p *Position) load(fen string) {
@@ -94,6 +121,7 @@ func (p *Position) load(fen string) {
 		p.turn = SIDE_WHITE
 	} else {
 		p.turn = SIDE_BLACK
+		p.state.key ^= zobristSideToMove
 	}
 
 	// Castling rights
@@ -113,9 +141,13 @@ func (p *Position) load(fen string) {
 		p.state.castlingRights |= CASTLING_BLACK_OOO
 	}
 
+	p.state.key ^= zobristCastlingRights[p.state.castlingRights]
+
 	// En passant square
 	if s[3] != "-" {
-		p.state.epSquare = SSM[s[3]]
+		epSquare := SSM[s[3]]
+		p.state.epSquare = epSquare
+		p.state.key ^= zobristEpFile[getFileOf(epSquare)]
 	}
 
 	// Halfmove clock
@@ -130,10 +162,6 @@ func (p *Position) load(fen string) {
 		if num, err := strconv.Atoi(string(s[5])); err == nil {
 			p.fullMoveCounter = num
 		}
-	}
-
-	if !TESTING {
-		fmt.Printf("Loaded position %s\n", fen)
 	}
 }
 
@@ -238,13 +266,15 @@ func (p *Position) makeMove(move Move) {
 	capturedSquare := to
 
 	newState := new(BoardState)
-	newState.capturedPiece = p.state.capturedPiece
 	newState.castlingRights = p.state.castlingRights
+	newState.capturedPiece = p.state.capturedPiece
 	newState.epSquare = p.state.epSquare
 	newState.rule50 = p.state.epSquare
 	newState.prevState = p.state
+	newState.key = p.state.key
 	p.state = newState
 
+	p.state.key ^= zobristSideToMove
 	p.state.rule50++
 
 	if moveType == MOVE_TYPE_ENPASSANT {
@@ -271,12 +301,16 @@ func (p *Position) makeMove(move Move) {
 
 		if to == SQ_H8 && p.turn == SIDE_WHITE && canOpponentCastleShort {
 			p.state.castlingRights ^= CASTLING_BLACK_OO
+			p.state.key ^= zobristCastlingRights[CASTLING_BLACK_OO]
 		} else if to == SQ_H1 && p.turn == SIDE_BLACK && canOpponentCastleShort {
 			p.state.castlingRights ^= CASTLING_WHITE_OO
+			p.state.key ^= zobristCastlingRights[CASTLING_WHITE_OO]
 		} else if to == SQ_A8 && p.turn == SIDE_WHITE && canOpponentCastleLong {
 			p.state.castlingRights ^= CASTLING_BLACK_OOO
+			p.state.key ^= zobristCastlingRights[CASTLING_BLACK_OOO]
 		} else if to == SQ_A1 && p.turn == SIDE_BLACK && canOpponentCastleLong {
 			p.state.castlingRights ^= CASTLING_WHITE_OOO
+			p.state.key ^= zobristCastlingRights[CASTLING_WHITE_OOO]
 		}
 	}
 
@@ -305,20 +339,24 @@ func (p *Position) makeMove(move Move) {
 
 			if (isFromE1 || from == SQ_H1) && p.canCastleShort(SIDE_WHITE) {
 				p.state.castlingRights ^= CASTLING_WHITE_OO
+				p.state.key ^= zobristCastlingRights[CASTLING_WHITE_OO]
 			}
 
 			if (isFromE1 || from == SQ_A1) && p.canCastleLong(SIDE_WHITE) {
 				p.state.castlingRights ^= CASTLING_WHITE_OOO
+				p.state.key ^= zobristCastlingRights[CASTLING_WHITE_OOO]
 			}
 		} else {
 			isFromE8 := from == SQ_E8
 
 			if (isFromE8 || from == SQ_H8) && p.canCastleShort(SIDE_BLACK) {
 				p.state.castlingRights ^= CASTLING_BLACK_OO
+				p.state.key ^= zobristCastlingRights[CASTLING_BLACK_OO]
 			}
 
 			if (isFromE8 || from == SQ_A8) && p.canCastleLong(SIDE_BLACK) {
 				p.state.castlingRights ^= CASTLING_BLACK_OOO
+				p.state.key ^= zobristCastlingRights[CASTLING_BLACK_OOO]
 			}
 		}
 	}
@@ -329,7 +367,10 @@ func (p *Position) makeMove(move Move) {
 		p.state.rule50 = 0
 	}
 
-	p.state.epSquare = NO_SQUARE
+	if p.state.epSquare != NO_SQUARE {
+		p.state.key ^= zobristEpFile[getFileOf(p.state.epSquare)]
+		p.state.epSquare = NO_SQUARE
+	}
 
 	if pieceType == PIECE_PAWN {
 		// En passant
@@ -339,6 +380,8 @@ func (p *Position) makeMove(move Move) {
 			} else {
 				p.state.epSquare = to + DIR_N
 			}
+
+			p.state.key ^= zobristEpFile[getFileOf(p.state.epSquare)]
 		}
 
 		// Promotion
@@ -543,6 +586,7 @@ func (p *Position) putPiece(piece int, square int) {
 	p.piecesByType[getTypeOf(piece)] |= bbOfSquare   // Update piece counts per type
 	p.piecesByType[PIECE_TYPE_ALL] |= bbOfSquare     // Also update all types so we can easily get all pieces on the board
 	p.piecesByColor[x] |= bbOfSquare                 // Update pieces by color
+	p.state.key ^= zobristPieceMap[piece][square]    // Update zobrist key
 }
 
 func (p *Position) removePiece(piece int, square int) {
@@ -568,6 +612,8 @@ func (p *Position) removePiece(piece int, square int) {
 	p.pieceIndex[lastSquare] = p.pieceIndex[square]       // Set the index of the last pieceList array element to the removed piece index
 	p.pieceList[piece][p.pieceIndex[square]] = lastSquare // Move the last element into the spot of the removed one, so that we can continue to grow the array normally
 	p.pieceList[piece][p.pieceCount[piece]] = NO_SQUARE   // Now reset the last element since it was moved
+
+	p.state.key ^= zobristPieceMap[piece][square] // Update zobrist key
 }
 
 func (p *Position) movePiece(from int, to int) {
@@ -586,6 +632,7 @@ func (p *Position) movePiece(from int, to int) {
 	// Update piece index & list
 	p.pieceIndex[to] = p.pieceIndex[from] // Don't need reset from square since we're not gonna access it
 	p.pieceList[piece][p.pieceIndex[to]] = to
+	p.state.key ^= zobristPieceMap[piece][from] ^ zobristPieceMap[piece][to]
 }
 
 func (p *Position) pretty() {
@@ -624,6 +671,8 @@ func (p *Position) pretty() {
 	} else {
 		result += "black"
 	}
+
+	result += "\nKey: " + strconv.FormatUint(p.state.key, 16)
 
 	result += "\n"
 
