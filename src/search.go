@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"time"
 )
 
 var divideDepth int = 0
@@ -44,16 +45,44 @@ func divide(pos Position, depth int) uint64 {
 }
 
 func searchGo(pos Position) {
-	depth := 6
-	pv = make([]Move, depth)
-	pvScore = make([]int, depth)
+	pv = make([]Move, 100)
+	pvScore = make([]int, 100)
 	pvMove = Move{}
 
-	for i := 0; i < depth; i++ {
+	for i := 0; i < 100; i++ {
 		pvScore[i] = -32000
 	}
 
-	search(&pos, depth, -32000, 32000)
+	maxThinkTime := 5.0
+	if pos.fullMoveCounter >= 50 {
+		maxThinkTime = 90.0
+	} else if pos.fullMoveCounter >= 40 {
+		maxThinkTime = 75.0
+	} else if pos.fullMoveCounter >= 30 {
+		maxThinkTime = 60.0
+	} else if pos.fullMoveCounter >= 20 {
+		maxThinkTime = 45.0
+	} else if pos.fullMoveCounter >= 10 {
+		maxThinkTime = 30.0
+	} else if pos.fullMoveCounter >= 5 {
+		maxThinkTime = 15.0
+	}
+
+	start := time.Now()
+	latestDepth := 1
+	for depth := 1; depth < 100; depth++ {
+		latestDepth = depth
+
+		before := time.Now()
+		search(&pos, depth, -32000, 32000)
+
+		fullDuration := time.Since(start).Seconds()
+		thisDuration := time.Since(before).Seconds()
+
+		if fullDuration > maxThinkTime || fullDuration+(thisDuration*4) > maxThinkTime {
+			break
+		}
+	}
 
 	/*
 		fmt.Printf("info depth %d pv ", depth)
@@ -61,7 +90,8 @@ func searchGo(pos Position) {
 			fmt.Printf("%s ", pv[i].toStr())
 		}*/
 
-	pvMove = pv[depth-1]
+	fmt.Println("Used depth", latestDepth)
+	pvMove = pv[latestDepth-1]
 
 	if !TESTING {
 		fmt.Printf("bestmove %s\n", pvMove.toStr())
@@ -71,8 +101,8 @@ func searchGo(pos Position) {
 
 func search(pos *Position, depth int, alpha int, beta int) int {
 	if depth == 0 {
-		//return quiesce(pos, alpha, beta)
-		return pos.evaluate()
+		return quiesce(pos, alpha, beta)
+		//return pos.evaluate()
 	}
 
 	// 50 move rule
