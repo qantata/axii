@@ -43,7 +43,7 @@ func handleMove(pos *Position, tokens []string) {
 }
 
 func handleUciMove(pos *Position, moveStr string) {
-	moves, nrMoves := generateMoves(*pos)
+	moves, nrMoves := generateMoves(*pos, false)
 
 	// Find the move by comparing move strings
 	for i := 0; i < nrMoves; i++ {

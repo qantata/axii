@@ -15,7 +15,7 @@ func perft(pos Position, depth int, divide bool) uint64 {
 		return 1
 	}
 
-	moves, nrMoves := generateMoves(pos)
+	moves, nrMoves := generateMoves(pos, false)
 
 	var nrNodes uint64 = 0
 	for i := 0; i < nrMoves; i++ {
@@ -71,8 +71,8 @@ func searchGo(pos Position) {
 
 func search(pos *Position, depth int, alpha int, beta int) int {
 	if depth == 0 {
-		return quiesce(pos, alpha, beta)
-		//return pos.evaluate()
+		//return quiesce(pos, alpha, beta)
+		return pos.evaluate()
 	}
 
 	// 50 move rule
@@ -82,7 +82,7 @@ func search(pos *Position, depth int, alpha int, beta int) int {
 
 	bestScore := -32000
 	mp := Movepick{}
-	mp.generateMoves(*pos)
+	mp.generateMoves(*pos, false)
 
 	nrLegalMoves := 0
 	isInCheck := pos.isInCheck()
@@ -144,7 +144,7 @@ func quiesce(pos *Position, alpha int, beta int) int {
 	}
 
 	mp := Movepick{}
-	mp.generateMoves(*pos)
+	mp.generateMoves(*pos, true)
 
 	for {
 		move := mp.getNextMove()

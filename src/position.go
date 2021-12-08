@@ -674,6 +674,12 @@ func (p *Position) pretty() {
 
 	result += "\nKey: " + strconv.FormatUint(p.state.key, 16)
 
+	eval := p.evaluate()
+	if p.turn == SIDE_BLACK {
+		eval *= -1
+	}
+	result += "\nEval: " + strconv.Itoa(eval)
+
 	result += "\n"
 
 	fmt.Println(result)

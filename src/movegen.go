@@ -34,16 +34,16 @@ func initMoveGen() {
 	}
 }
 
-func generateMoves(pos Position) ([MAX_MOVES_IN_POS]Move, int) {
+func generateMoves(pos Position, onlyCaptures bool) ([MAX_MOVES_IN_POS]Move, int) {
 	var moves [MAX_MOVES_IN_POS]Move
 	var index int = 0
 
-	generatePawnMoves(pos, &moves, &index, false)
-	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_ROOK, false)
-	generateKnightMoves(pos, &moves, &index, false)
-	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_BISHOP, false)
-	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_QUEEN, false)
-	generateKingMoves(pos, &moves, &index, false)
+	generatePawnMoves(pos, &moves, &index, onlyCaptures)
+	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_ROOK, onlyCaptures)
+	generateKnightMoves(pos, &moves, &index, onlyCaptures)
+	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_BISHOP, onlyCaptures)
+	generateSlidingMoves(pos, &moves, &index, SLIDING_GEN_TYPE_QUEEN, onlyCaptures)
+	generateKingMoves(pos, &moves, &index, onlyCaptures)
 
 	return moves, index
 }

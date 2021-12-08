@@ -6,8 +6,8 @@ type Movepick struct {
 	currIndex int
 }
 
-func (mp *Movepick) generateMoves(pos Position) {
-	moves, nrMoves := generateMoves(pos)
+func (mp *Movepick) generateMoves(pos Position, onlyCaptures bool) {
+	moves, nrMoves := generateMoves(pos, onlyCaptures)
 	mp.moves = moves
 	mp.nrMoves = nrMoves
 	mp.currIndex = 0
